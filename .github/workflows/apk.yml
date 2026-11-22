@@ -12,10 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Proje zip'ini aç
+      - name: En son yüklenen zip'i aç
         run: |
-          if [ -f puf-project.zip ]; then unzip -o -q puf-project.zip -d . ; fi
+          Z=$(git log -1 --diff-filter=AM --name-only --pretty=format: -- '*.zip' | grep -i '\.zip$' | head -1)
+          echo "Kullanılan zip: $Z"
+          unzip -o -q "$Z" -d .
           ls -la
 
       - uses: actions/setup-java@v4
