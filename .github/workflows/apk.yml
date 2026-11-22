@@ -2,6 +2,7 @@ name: APK derle
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +21,6 @@ jobs:
           Z=$(git log -1 --diff-filter=AM --name-only --pretty=format: -- '*.zip' | grep -i '\.zip$' | head -1)
           echo "Kullanılan zip: $Z"
           unzip -o -q "$Z" -d .
-          ls -la
 
       - uses: actions/setup-java@v4
         with:
@@ -32,7 +32,21 @@ jobs:
           gradle-version: '8.9'
 
       - name: APK derle
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --no-daemon 2>&1 | tee build.log
+
+      - name: Hata kaydını yaz (Claude okusun diye)
+        if: failure()
+        run: |
+          { echo "run ${{ github.run_number }}"; grep -E "^e: |^w: .*error|What went wrong|AAPT|error:" -A4 build.log || true; echo "----- son satırlar -----"; tail -120 build.log; } > hata.txt
+          git config user.name "puf-bot"
+          git config user.email "puf-bot@users.noreply.github.com"
+          git checkout --orphan logs
+          git rm -rf --cached . > /dev/null
+          git add -f hata.txt
+          git commit -m "build ${{ github.run_number }} hata"
+          git push -f origin logs
 
       - name: APK'yı yükle (Actions)
         uses: actions/upload-artifact@v4
